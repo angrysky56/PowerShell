@@ -1,29 +1,46 @@
-function prompt {
 
-    #Assign Windows Title Text
+
+function prompt {
+    # Assign Windows Title Text
     $host.ui.RawUI.WindowTitle = "Current Folder: $pwd"
 
-    #Configure current user, current folder and date outputs
-    $CmdPromptCurrentFolder = Split-Path -Path $pwd -Leaf
-    $CmdPromptUser = [Security.Principal.WindowsIdentity]::GetCurrent();
+    # Configure current user and date outputs
+    $CmdPromptUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
     $Date = Get-Date -Format 'dddd hh:mm:ss tt'
 
     # Test for Admin / Elevated
     $IsAdmin = (New-Object Security.Principal.WindowsPrincipal ([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
 
-    #Calculate execution time of last cmd and convert to milliseconds, seconds or minutes
+    # Calculate execution time of last command
     $LastCommand = Get-History -Count 1
-    if ($lastCommand) { $RunTime = ($lastCommand.EndExecutionTime - $lastCommand.StartExecutionTime).TotalSeconds }
+    if ($LastCommand) { 
+        $RunTime = ($LastCommand.EndExecutionTime - $LastCommand.StartExecutionTime).TotalSeconds 
+    }
 
     if ($RunTime -ge 60) {
-        $ts = [timespan]::fromseconds($RunTime)
-        $min, $sec = ($ts.ToString("mm\:ss")).Split(":")
-        $ElapsedTime = -join ($min, " min ", $sec, " sec")
+        $ElapsedTime = [timespan]::fromseconds($RunTime).ToString("mm\:ss") + " min"
+    } else {
+        $ElapsedTime = "{0:N2} sec" -f $RunTime
     }
-    else {
-        $ElapsedTime = [math]::Round(($RunTime), 2)
-        $ElapsedTime = -join (($ElapsedTime.ToString()), " sec")
-    }
+
+    # Detect active Conda environment
+    $CondaEnv = $env:CONDA_DEFAULT_ENV
+    if (-not $CondaEnv) { $CondaEnv = "None" }  # Default if no Conda environment is active
+
+    # Decorate the CMD Prompt
+    Write-Host ""
+    Write-host ($(if ($IsAdmin) { 'Elevated ' } else { '' })) -BackgroundColor DarkRed -ForegroundColor White -NoNewline
+    Write-Host " USER: $CmdPromptUser " -BackgroundColor DarkBlue -ForegroundColor White -NoNewline
+    Write-Host " ENV: $CondaEnv " -BackgroundColor DarkGreen -ForegroundColor White -NoNewline
+    Write-Host " $pwd " -ForegroundColor White -BackgroundColor DarkGray -NoNewline
+    Write-Host " $Date " -ForegroundColor White
+    Write-Host "[$ElapsedTime] " -NoNewline -ForegroundColor Green
+
+    return "> "
+
+ # end prompt function
+
+
 
     #Decorate the CMD Prompt
     Write-Host ""
@@ -48,7 +65,7 @@ function Invoke-5Admin {
     }
 
     process {
-        Start-Process powershell.exe -Credential aligntech\mkanakos-admin -ArgumentList "Start-Process powershell.exe -Verb runAs"
+        Start-Process powershell.exe -Credential TY\Administrators -ArgumentList "Start-Process powershell.exe -Verb runAs"
     }
 
     end {
@@ -65,7 +82,7 @@ function Invoke-7Admin {
     }
 
     process {
-        Start-Process powershell.exe -Credential aligntech\mkanakos-admin -ArgumentList "Start-Process pwsh.exe -Verb runAs"
+        Start-Process powershell.exe -Credential TY\Administrators -ArgumentList "Start-Process pwsh.exe -Verb runAs"
     }
 
     end {
@@ -90,8 +107,18 @@ $exclude = "runspaceid", "pscomputername"
 $InputDir = "C:\Scripts\Input"
 $OutputDir = "C:\Scripts\Output"
 
-$GitIAMDir = "C:\GitRepos\foundational-and-identity"
-$OneDriveDir = "C:\Users\mkanakos\OneDrive - Align Technology, Inc"
-$DownloadsDir = "C:\Users\mkana\Downloads"
-$DesktopDir = "C:\Users\mkanakos\Desktop"
-$ReportsDir = "C:\Users\mkanakos\OneDrive - Align Technology, Inc\Reports"
+$GitIAMDir = "F:\GithubRepos\"
+$OneDriveDir = "C:\Users\angry\OneDrive"
+$DownloadsDir = "C:\Users\angry\Downloads"
+$DesktopDir = "C:\Users\angry\Desktop"
+$ReportsDir = "C:\Users\angry\OneDrive\Reports"
+
+
+# Conda initialization
+# !! Contents within this block are managed by 'conda init' !!
+If (Test-Path "F:\miniforge3\Scripts\conda.exe") {
+    (& "F:\miniforge3\Scripts\conda.exe" "shell.powershell" "hook") | Out-String | ?{$_} | Invoke-Expression
+}
+
+# Optionally activate the base environment by default
+conda activate base
